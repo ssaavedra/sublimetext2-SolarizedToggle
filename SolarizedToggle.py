@@ -46,12 +46,27 @@ class SolarizedToggle(object):
         self.plugin_settings.set('current_state', self.state)
         sublime.save_settings(self.plugin_settings_file)
 
+    def save_previous_color_scheme(self):
+        possible = self.plugin_settings.get('color_schemes')
+        old_cs = self.global_settings.get('color_scheme')
+
+        possible = [item for sublist in possible.itervalues() for item in sublist]
+        if old_cs in possible:
+            return
+
+        print old_cs
+        print possible
+
+        self.global_settings.set('color_scheme_disabled', old_cs)
+        sublime.save_settings(self.global_settings_file)
+
     def set_state(self, value):
         possible = self.plugin_settings.get('color_schemes')[value]
         for each in possible:
             path = sublime.packages_path() + each.replace('Packages', '')
             if os.path.exists(path):
                 print "Setting theme to ", path
+            self.save_previous_color_scheme()
             self.global_settings.set('color_scheme', each)
             self.theme = each
             sublime.save_settings(self.global_settings_file)
@@ -59,23 +74,15 @@ class SolarizedToggle(object):
 
     def flip(self):
         self._flip_state()
-        theme = self.set_state(self.state)
+        self.set_state(self.state)
         # if self.plugin_settings.get("flip_theme"):
         #     self._set('theme', self.state)
-        self.update_views()
 
-    def update_views(self):
-        for window in sublime.windows()
-            for view in window.views():
-                view.settings().set('color_scheme', self.theme)
-        # print "Setting current window theme to ", self.theme
-        # (sublime.active_window().active_view()
-        #  .settings().set('color_scheme', self.theme))
-
-
-# class SolarizedToggleListener(sublime_plugin.EventListener):
-#     def on_activated(self, view):
-#         _flipper.update_views(view)
+    def erase(self):
+        self.global_settings.erase('color_scheme')
+        disabled = self.global_settings.get('color_scheme_disabled')
+        self.global_settings.set('color_scheme', disabled)
+        sublime.save_settings(self.global_settings_file)
 
 
 class SolarizedToggleCommand(sublime_plugin.ApplicationCommand):
@@ -83,10 +90,9 @@ class SolarizedToggleCommand(sublime_plugin.ApplicationCommand):
         _flipper.flip()
 
 
+class SolarizedDisableCommand(sublime_plugin.ApplicationCommand):
+    def run(self, **args):
+        _flipper.erase()
+
+
 _flipper = SolarizedToggle()
-
-
-def plugin_loaded():
-    _flipper.plugin_loaded_setup()
-
-# plugin_loaded()
